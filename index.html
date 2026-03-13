@@ -781,6 +781,28 @@
       border: 1px solid var(--border-color);
     }
 
+    /* Fast loading states */
+    .fast-loading {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fast-loading::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      animation: shimmer 0.6s ease-in-out;
+    }
+
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
     /* Search Grid */
     .search-grid {
       display: grid;
@@ -1461,6 +1483,103 @@
       background: var(--primary-color);
     }
 
+    /* Pure.cc Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      position: relative;
+    }
+
+    .spinner::before,
+    .spinner::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 2px solid transparent;
+      border-top-color: var(--primary-color);
+      animation: spin 0.8s linear infinite;
+    }
+
+    .spinner::after {
+      border-top-color: var(--accent-color);
+      animation-delay: 0.2s;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Square Loading Animation */
+    .square-loader {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      position: relative;
+      border: 2px solid var(--border-color);
+      background: var(--card-bg);
+    }
+
+    .square-loader::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, var(--primary-color) 25%, var(--accent-color) 25%, var(--accent-color) 50%, var(--primary-color) 50%, var(--primary-color) 75%, var(--accent-color) 75%);
+      background-size: 20px 20px;
+      animation: slidePattern 1s linear infinite;
+    }
+
+    @keyframes slidePattern {
+      0% { background-position: 0 0; }
+      100% { background-position: 40px 40px; }
+    }
+
+    /* Pulsing Square Loader */
+    .pulse-square {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      background: var(--primary-color);
+      position: relative;
+      animation: pulseSquare 1.5s ease-in-out infinite;
+    }
+
+    .pulse-square::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      background: var(--card-bg);
+    }
+
+    @keyframes pulseSquare {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.8); opacity: 0.5; }
+    }
+
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      gap: 1rem;
+    }
+
+    .loading-text {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
     /* Responsive Design */
     @media (max-width: 1024px) {
       .hero-content {
@@ -1959,7 +2078,7 @@ function renderRow(cat, items) {
 function makeSkeleton() {
   const s = document.createElement('div');
   s.className = 'row-section';
-  s.innerHTML = `<div class="row-header"><div style="background:var(--hover-bg);width:200px;height:24px;animation:pulse 1.6s ease-in-out infinite;"></div></div><div class="loading-row">${Array(6).fill('<div class="skeleton-card"></div>').join('')}</div>`;
+  s.innerHTML = `<div class="row-header"><div class="loading-container"><div class="square-loader"></div><div class="loading-text">Loading Movies...</div></div></div><div class="loading-row">${Array(6).fill('<div class="skeleton-card fast-loading"></div>').join('')}</div>`;
   return s;
 }
 
@@ -1972,20 +2091,31 @@ async function loadCategories() {
   heroIndex = 0;
   if (heroTimer) clearInterval(heroTimer);
 
-  const skels = CATS.map(() => { const s = makeSkeleton(); mc.appendChild(s); return s; });
-  const results = await Promise.all(CATS.map(c => apiFetch(c.url)));
-  results.forEach((data, i) => {
-    skels[i]?.remove();
-    if (data?.results) {
-      renderRow(CATS[i], data.results);
-      if (i === 0 && data.results.length) {
-        // Store first 5 trending items for rotation
-        heroItems = data.results.filter(r => r.backdrop_path).slice(0, 5);
-        if (heroItems.length > 0) {
-          showHero(heroItems[0], CATS[i].type);
-          startHeroRotation(CATS[i].type);
-        }
-      }
+  // Show initial loading spinner
+  mc.innerHTML = '<div class="loading-container"><div class="pulse-square"></div><div class="loading-text">Loading Content...</div></div>';
+
+  // Fast parallel loading
+  const [trendingData, ...otherData] = await Promise.allSettled([
+    apiFetch(CATS[0].url),
+    ...CATS.slice(1).map(c => apiFetch(c.url))
+  ]);
+
+  mc.innerHTML = '';
+  
+  // Process trending first for hero
+  if (trendingData.status === 'fulfilled' && trendingData.value?.results) {
+    renderRow(CATS[0], trendingData.value.results);
+    heroItems = trendingData.value.results.filter(r => r.backdrop_path).slice(0, 5);
+    if (heroItems.length > 0) {
+      showHero(heroItems[0], CATS[0].type);
+      startHeroRotation(CATS[0].type);
+    }
+  }
+
+  // Process other categories
+  otherData.forEach((result, i) => {
+    if (result.status === 'fulfilled' && result.value?.results) {
+      renderRow(CATS[i + 1], result.value.results);
     }
   });
 }
@@ -2095,24 +2225,23 @@ async function searchContent() {
   const mc = $('mainContent');
   mc.innerHTML = '';
   $('heroSection').style.display = 'none';
-  const skWrap = document.createElement('div');
-  skWrap.style.cssText = 'padding:2rem;';
-  skWrap.innerHTML = `<div style="font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:2rem;color:var(--text-primary);">Searching...</div>`;
-  const skG = document.createElement('div');
-  skG.className = 'search-grid';
-  for (let i = 0; i < 12; i++) skG.innerHTML += `<div class="skeleton-card"></div>`;
-  skWrap.appendChild(skG);
-  mc.appendChild(skWrap);
+  
+  // Show loading spinner
+  mc.innerHTML = '<div class="loading-container"><div class="square-loader"></div><div class="loading-text">Searching...</div></div>';
+  
   const data = await apiFetch(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(q)}`);
-  skWrap.remove();
+  
   if (!data?.results?.length) {
     mc.innerHTML = `<div class="empty-state">No results for "<strong style="color:var(--text-primary);">${q}</strong>"</div>`;
     return;
   }
+  
   const hdr = document.createElement('div');
   hdr.style.cssText = 'padding:2rem 2rem 1rem;';
   hdr.innerHTML = `<div style="font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-primary);">Results for "<span style="background:var(--gradient-1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${q}</span>"</div>`;
+  mc.innerHTML = '';
   mc.appendChild(hdr);
+  
   const grid = document.createElement('div');
   grid.className = 'search-grid';
   data.results.filter(i => i.poster_path && (i.media_type === 'movie' || i.media_type === 'tv')).forEach(i => grid.appendChild(createCard(i, i.media_type)));
@@ -2191,7 +2320,7 @@ function mCreateCard(item, type) {
 function mSkelGrid(n = 12) {
   const wrap = document.createElement('div');
   wrap.className = 'm-skel-grid';
-  for (let i = 0; i < n; i++) wrap.innerHTML += `<div class="m-skel-card"></div>`;
+  for (let i = 0; i < n; i++) wrap.innerHTML += `<div class="m-skel-card fast-loading"></div>`;
   return wrap;
 }
 
@@ -2199,40 +2328,34 @@ async function mobileLoadHome() {
   mContent.innerHTML = '';
   mContent.scrollTop = 0;
 
-  const heroSkel = document.createElement('div');
-  heroSkel.className = 'm-hero-skel';
-  mContent.appendChild(heroSkel);
+  // Show loading spinner
+  mContent.innerHTML = '<div class="loading-container"><div class="pulse-square"></div><div class="loading-text">Loading Home...</div></div>';
 
-  const secSkels = CATS.map(c => {
-    const sec = document.createElement('div');
-    sec.innerHTML = `<div class="m-section-label">${c.title}</div>`;
-    sec.appendChild(mSkelGrid(6));
-    mContent.appendChild(sec);
-    return sec;
-  });
+  // Fast parallel loading
+  const results = await Promise.allSettled(CATS.map(c => apiFetch(c.url)));
+  mContent.innerHTML = '';
 
-  const results = await Promise.all(CATS.map(c => apiFetch(c.url)));
-
-  heroSkel.remove();
-  if (results[0]?.results?.length) {
-    const feat = results[0].results.find(r => r.backdrop_path) || results[0].results[0];
+  // Process trending first for hero
+  if (results[0].status === 'fulfilled' && results[0].value?.results?.length) {
+    const feat = results[0].value.results.find(r => r.backdrop_path) || results[0].value.results[0];
     if (feat) mContent.prepend(mRenderHero(feat, CATS[0].type));
   }
 
-  results.forEach((data, i) => {
-    secSkels[i].remove();
-    if (!data?.results?.length) return;
-    const filtered = data.results.filter(r => r.poster_path).slice(0, 12);
-    const sec = document.createElement('div');
-    sec.innerHTML = `<div class="m-section-label">${CATS[i].title}</div>`;
-    const grid = document.createElement('div');
-    grid.className = 'm-card-grid';
-    filtered.forEach(item => {
-      const t = CATS[i].type === 'mixed' ? (item.media_type || 'movie') : CATS[i].type;
-      grid.appendChild(mCreateCard(item, t));
-    });
-    sec.appendChild(grid);
-    mContent.appendChild(sec);
+  // Process other categories
+  results.forEach((result, i) => {
+    if (result.status === 'fulfilled' && result.value?.results?.length) {
+      const filtered = result.value.results.filter(r => r.poster_path).slice(0, 12);
+      const sec = document.createElement('div');
+      sec.innerHTML = `<div class="m-section-label">${CATS[i].title}</div>`;
+      const grid = document.createElement('div');
+      grid.className = 'm-card-grid';
+      filtered.forEach(item => {
+        const t = CATS[i].type === 'mixed' ? (item.media_type || 'movie') : CATS[i].type;
+        grid.appendChild(mCreateCard(item, t));
+      });
+      sec.appendChild(grid);
+      mContent.appendChild(sec);
+    }
   });
 }
 
@@ -2240,20 +2363,26 @@ async function mobileLoadSection(title, url, type) {
   mContent.innerHTML = '';
   mContent.scrollTop = 0;
 
+  // Show loading spinner
+  mContent.innerHTML = '<div class="loading-container"><div class="square-loader"></div><div class="loading-text">Loading...</div></div>';
+
+  const data = await apiFetch(url);
+  
+  if (!data?.results?.length) { 
+    mContent.innerHTML = `<div class="m-empty">Nothing found.</div>`; 
+    return; 
+  }
+
   const label = document.createElement('div');
   label.className = 'm-section-label';
   label.textContent = title;
-  const skel = mSkelGrid(18);
-  mContent.appendChild(label);
-  mContent.appendChild(skel);
-
-  const data = await apiFetch(url);
-  skel.remove();
-  if (!data?.results?.length) { mContent.innerHTML += `<div class="m-empty">Nothing found.</div>`; return; }
-
+  
   const grid = document.createElement('div');
   grid.className = 'm-card-grid';
   data.results.filter(r => r.poster_path).forEach(item => grid.appendChild(mCreateCard(item, type)));
+  
+  mContent.innerHTML = '';
+  mContent.appendChild(label);
   mContent.appendChild(grid);
 }
 
@@ -2264,20 +2393,26 @@ async function mobileSearch() {
   mContent.innerHTML = '';
   mContent.scrollTop = 0;
 
+  // Show loading spinner
+  mContent.innerHTML = '<div class="loading-container"><div class="square-loader"></div><div class="loading-text">Searching...</div></div>';
+
+  const data = await apiFetch(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(q)}`);
+  
+  if (!data?.results?.length) { 
+    mContent.innerHTML = `<div class="m-empty">No results for "${q}"</div>`; 
+    return; 
+  }
+
   const label = document.createElement('div');
   label.className = 'm-section-label';
   label.innerHTML = `Results for "<span style="background:var(--gradient-1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${q}</span>"`;
-  const skel = mSkelGrid(12);
-  mContent.appendChild(label);
-  mContent.appendChild(skel);
-
-  const data = await apiFetch(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(q)}`);
-  skel.remove();
-  if (!data?.results?.length) { mContent.innerHTML += `<div class="m-empty">No results for "${q}"</div>`; return; }
-
+  
   const grid = document.createElement('div');
   grid.className = 'm-card-grid';
   data.results.filter(i => i.poster_path && (i.media_type === 'movie' || i.media_type === 'tv')).forEach(i => grid.appendChild(mCreateCard(i, i.media_type)));
+  
+  mContent.innerHTML = '';
+  mContent.appendChild(label);
   mContent.appendChild(grid);
 }
 
