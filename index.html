@@ -570,6 +570,22 @@
       border-color: var(--primary-color);
     }
 
+    .server-controls {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .m-server-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
     /* ═══════════════════════════════════════
        CONTENT SECTIONS - Pure.cc Card Style
     ═══════════════════════════════════════ */
@@ -1739,6 +1755,12 @@
     </div>
     <iframe id="player" allowfullscreen loading="lazy"></iframe>
     <div class="episode-controls" id="episodeControls"></div>
+    <div class="server-controls" id="serverControls">
+      <span class="ep-label">Server</span>
+      <select class="ep-select" id="serverSelect">
+        ${SERVERS.map((s, i) => `<option value="${i}">${s.name}</option>`).join('')}
+      </select>
+    </div>
   </div>
 </section>
 
@@ -1826,6 +1848,12 @@
     <div class="m-player-info">
       <div class="m-player-title" id="mPlayerTitle"></div>
       <div class="m-player-meta" id="mPlayerMeta"></div>
+      <div class="m-server-row">
+        <span class="m-ep-label">Server</span>
+        <select class="m-ep-select" id="mServerSelect">
+          ${SERVERS.map((s, i) => `<option value="${i}">${s.name}</option>`).join('')}
+        </select>
+      </div>
       <div id="mEpControls"></div>
     </div>
   </div>
@@ -1937,7 +1965,15 @@ animateParticles();
 /* ─── Movie App Code ─── */
 const API_KEY = 'd1007bf32c19224b866b56f63c3bd4a4';
 const IMG = 'https://image.tmdb.org/t/p/';
-const EMBED = 'https://vidsrc.xyz/embed';
+const SERVERS = [
+  { name: 'VidSrc', url: 'https://vidsrc.xyz/embed' },
+  { name: '111Movies', url: 'https://111movies.com/embed' },
+  { name: 'EmbedSU', url: 'https://embed.su/embed' },
+  { name: 'VidLink', url: 'https://vidlink.pro/embed' },
+  { name: 'VidSrcICU', url: 'https://vidsrc.icu/embed' },
+  { name: 'AutoEmbed', url: 'https://autoembed.co/embed' }
+];
+let currentServer = 0;
 const $ = id => document.getElementById(id);
 
 /* ─── shared state ─── */
@@ -2195,13 +2231,25 @@ async function loadPlayer(id, type, name, item) {
     dynEp.onchange = () => {
       const sn = dynSeason.value, ep = dynEp.value;
       if (sn && ep) {
-        $('player').src = `${EMBED}/tv?tmdb=${id}&season=${sn}&episode=${ep}`;
+        $('player').src = `${SERVERS[currentServer].url}/tv?tmdb=${id}&season=${sn}&episode=${ep}`;
         $('player').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     };
+    $('serverSelect').onchange = () => {
+      currentServer = parseInt($('serverSelect').value);
+      if (type === 'tv' && dynSeason.value && dynEp.value) {
+        $('player').src = `${SERVERS[currentServer].url}/tv?tmdb=${id}&season=${dynSeason.value}&episode=${dynEp.value}`;
+      } else if (type === 'movie') {
+        $('player').src = `${SERVERS[currentServer].url}/movie?tmdb=${id}`;
+      }
+    };
   } else {
-    $('player').src = `${EMBED}/movie?tmdb=${id}`;
+    $('player').src = `${SERVERS[currentServer].url}/movie?tmdb=${id}`;
     $('player').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('serverSelect').onchange = () => {
+      currentServer = parseInt($('serverSelect').value);
+      $('player').src = `${SERVERS[currentServer].url}/movie?tmdb=${id}`;
+    };
   }
 }
 
@@ -2450,10 +2498,22 @@ async function mOpenPlayer(id, type, name, item) {
     };
     mDynEp.onchange = () => {
       const sn = mDynSeason.value, ep = mDynEp.value;
-      if (sn && ep) $('mPlayer').src = `${EMBED}/tv?tmdb=${id}&season=${sn}&episode=${ep}`;
+      if (sn && ep) $('mPlayer').src = `${SERVERS[currentServer].url}/tv?tmdb=${id}&season=${sn}&episode=${ep}`;
+    };
+    $('mServerSelect').onchange = () => {
+      currentServer = parseInt($('mServerSelect').value);
+      if (type === 'tv' && mDynSeason.value && mDynEp.value) {
+        $('mPlayer').src = `${SERVERS[currentServer].url}/tv?tmdb=${id}&season=${mDynSeason.value}&episode=${mDynEp.value}`;
+      } else if (type === 'movie') {
+        $('mPlayer').src = `${SERVERS[currentServer].url}/movie?tmdb=${id}`;
+      }
     };
   } else {
-    $('mPlayer').src = `${EMBED}/movie?tmdb=${id}`;
+    $('mPlayer').src = `${SERVERS[currentServer].url}/movie?tmdb=${id}`;
+    $('mServerSelect').onchange = () => {
+      currentServer = parseInt($('mServerSelect').value);
+      $('mPlayer').src = `${SERVERS[currentServer].url}/movie?tmdb=${id}`;
+    };
   }
 }
 
