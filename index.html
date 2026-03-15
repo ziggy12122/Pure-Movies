@@ -1758,7 +1758,12 @@
     <div class="server-controls" id="serverControls">
       <span class="ep-label">Server</span>
       <select class="ep-select" id="serverSelect">
-        ${SERVERS.map((s, i) => `<option value="${i}">${s.name}</option>`).join('')}
+        <option value="0">VidSrc</option>
+        <option value="1">111Movies</option>
+        <option value="2">EmbedSU</option>
+        <option value="3">VidLink</option>
+        <option value="4">VidSrcICU</option>
+        <option value="5">AutoEmbed</option>
       </select>
     </div>
   </div>
@@ -1851,7 +1856,12 @@
       <div class="m-server-row">
         <span class="m-ep-label">Server</span>
         <select class="m-ep-select" id="mServerSelect">
-          ${SERVERS.map((s, i) => `<option value="${i}">${s.name}</option>`).join('')}
+          <option value="0">VidSrc</option>
+          <option value="1">111Movies</option>
+          <option value="2">EmbedSU</option>
+          <option value="3">VidLink</option>
+          <option value="4">VidSrcICU</option>
+          <option value="5">AutoEmbed</option>
         </select>
       </div>
       <div id="mEpControls"></div>
