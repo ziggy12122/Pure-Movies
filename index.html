@@ -1758,12 +1758,11 @@
     <div class="server-controls" id="serverControls">
       <span class="ep-label">Server</span>
       <select class="ep-select" id="serverSelect">
-        <option value="0">VidSrc.to</option>
-        <option value="1">VidSrc.icu</option>
+        <option value="0">VidSrc.icu</option>
+        <option value="1">2Embed.cc</option>
         <option value="2">VidLink.pro</option>
         <option value="3">AutoEmbed.co</option>
-        <option value="4">2Embed.to</option>
-        <option value="5">SuperEmbed</option>
+        <option value="4">SuperEmbed</option>
       </select>
     </div>
   </div>
@@ -1856,12 +1855,11 @@
       <div class="m-server-row">
         <span class="m-ep-label">Server</span>
         <select class="m-ep-select" id="mServerSelect">
-          <option value="0">VidSrc.to</option>
-          <option value="1">VidSrc.icu</option>
+          <option value="0">VidSrc.icu</option>
+          <option value="1">2Embed.cc</option>
           <option value="2">VidLink.pro</option>
           <option value="3">AutoEmbed.co</option>
-          <option value="4">2Embed.to</option>
-          <option value="5">SuperEmbed</option>
+          <option value="4">SuperEmbed</option>
         </select>
       </div>
       <div id="mEpControls"></div>
@@ -1976,12 +1974,11 @@ animateParticles();
 const API_KEY = 'd1007bf32c19224b866b56f63c3bd4a4';
 const IMG = 'https://image.tmdb.org/t/p/';
 const SERVERS = [
-  { name: 'VidSrc.to', url: 'https://vidsrc.to/embed', movie: '/movie/', tv: '/tv/' },
-  { name: 'VidSrc.icu', url: 'https://vidsrc.icu/embed', movie: '/movie/', tv: '/tv/' },
-  { name: 'VidLink.pro', url: 'https://vidlink.pro', movie: '/movie/', tv: '/tv/' },
-  { name: 'AutoEmbed.co', url: 'https://autoembed.co', movie: '/movie/tmdb/', tv: '/tv/tmdb/' },
-  { name: '2Embed.to', url: 'https://www.2embed.to/embed', movie: '/', tv: '/' },
-  { name: 'SuperEmbed', url: 'https://multiembed.mov', movie: '/?video_id=', tv: '/?video_id=' }
+  { name: 'VidSrc.icu', url: 'https://vidsrc.icu/embed' },
+  { name: '2Embed.cc', url: 'https://www.2embed.cc' },
+  { name: 'VidLink.pro', url: 'https://vidlink.pro' },
+  { name: 'AutoEmbed.co', url: 'https://autoembed.co' },
+  { name: 'SuperEmbed', url: 'https://multiembed.mov' }
 ];
 let currentServer = 0;
 const $ = id => document.getElementById(id);
@@ -1989,28 +1986,28 @@ const $ = id => document.getElementById(id);
 /* Helper function to get embed URL based on server */
 function getEmbedUrl(server, type, id, season, episode) {
   const srv = SERVERS[server];
-  if (srv.name === 'AutoEmbed.co') {
+  if (srv.name === 'VidSrc.icu') {
     return type === 'tv' 
+      ? `${srv.url}/tv/${id}/${season}/${episode}`
+      : `${srv.url}/movie/${id}`;
+  } else if (srv.name === '2Embed.cc') {
+    return type === 'tv'
+      ? `${srv.url}/embedtv/${id}&s=${season}&e=${episode}`
+      : `${srv.url}/embed/${id}`;
+  } else if (srv.name === 'VidLink.pro') {
+    return type === 'tv'
+      ? `${srv.url}/tv/${id}/${season}/${episode}`
+      : `${srv.url}/movie/${id}`;
+  } else if (srv.name === 'AutoEmbed.co') {
+    return type === 'tv'
       ? `${srv.url}/tv/tmdb/${id}-${season}-${episode}`
       : `${srv.url}/movie/tmdb/${id}`;
   } else if (srv.name === 'SuperEmbed') {
     return type === 'tv'
       ? `${srv.url}/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
       : `${srv.url}/?video_id=${id}&tmdb=1`;
-  } else if (srv.name === '2Embed.to') {
-    return type === 'tv'
-      ? `${srv.url}/tmdb/tv?id=${id}&s=${season}&e=${episode}`
-      : `${srv.url}/tmdb/movie?id=${id}`;
-  } else if (srv.name === 'VidLink.pro') {
-    return type === 'tv'
-      ? `${srv.url}/tv/${id}/${season}/${episode}`
-      : `${srv.url}/movie/${id}`;
-  } else {
-    // VidSrc.to and VidSrc.icu
-    return type === 'tv'
-      ? `${srv.url}${srv.tv}${id}/${season}/${episode}`
-      : `${srv.url}${srv.movie}${id}`;
   }
+  return '';
 }
 let heroItem = null;
 let heroItems = [];
